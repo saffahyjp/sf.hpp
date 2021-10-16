@@ -1,3 +1,5 @@
+#pragma once
+
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -11,12 +13,15 @@ public:
 struct ForceConvert { };
 constexpr auto forceConvert = ForceConvert { };
 
+template <typename T, typename U>
+concept Undecay = is_same_v<decay_t<T>, U>;
+
 namespace Detail {
     template <typename... Ts>
-    struct DependentFalseImpl : false_type { };
+    struct DependentfalseImpl : false_type { };
 }
 template <typename... Ts>
-constexpr bool DependentFalse = Detail::DependentFalseImpl<Ts...>::value;
+constexpr bool Dependentfalse = Detail::DependentfalseImpl<Ts...>::value;
 
 static void assertImpl(bool x) {
     if (x)
@@ -38,7 +43,7 @@ static auto assertConvert(UIn&& u) {
         SF_ASSERT(cmp_equal(t, u));
         return t;
     } else {
-        static_assert(DependentFalse<U>);
+        static_assert(Dependentfalse<U>);
     }
 }
 
@@ -50,11 +55,20 @@ public:
     template <typename U>
     constexpr FreeInteger(ForceConvert, U&& u)
         : value_(assertConvert<T>(forward<U>(u))) { }
+    template <Undecay<FreeInteger> U>
+    constexpr FreeInteger(ForceConvert, U&& u)
+        : FreeInteger(forward<U>(u)) { }
 
     template <typename U>
-    static constexpr auto from(U&& u) {
+    static constexpr auto forceFrom(U&& u) {
         return FreeInteger(forceConvert, forward<U>(u));
     }
+    template <Undecay<T> U>
+    static constexpr auto from(U&& u) {
+        return forceFrom(forward<U>(u));
+    }
+    template <typename U>
+    static constexpr auto from(U&&) = delete;
     
     constexpr auto get() const {
         return value_;
@@ -62,7 +76,7 @@ public:
 
     constexpr auto operator<=>(const FreeInteger&) const = default;
 
-    constexpr FreeInteger& operator++() {
+    constexpr decltype(auto) operator++() {
         ++value_;
         return *this;
     }
@@ -82,7 +96,7 @@ using Int = FreeInteger<int>;
 
 template <integral T>
 static auto makeFreeInteger(T t) {
-    return FreeInteger<T>::from(t);
+    return FreeInteger<decay_t<T>>::from(t);
 }
 
 using Char = char;  // TODO
@@ -97,7 +111,36 @@ namespace Detail {
 template <typename T>
 concept CFreeInteger = Detail::CFreeIntegerImpl<T>::value;
 
-template <CFreeInteger TIn, typename TagIn>
+template <typename Config>
+concept CIntegerConfig = requires {
+    { Config::allowSelfCompare() } -> same_as<bool>;
+    { Config::allowPostIncrement() } -> same_as<bool>;
+    { Config::allowPreIncrement() } -> same_as<bool>;
+    { Config::allowStreamOutput() } -> same_as<bool>;
+};
+
+struct DefaultCIntegerConfig {
+    static constexpr auto allowSelfCompare() {
+        return true;
+    }
+    static constexpr auto allowPostIncrement() {
+        return true;
+    }
+    static constexpr auto allowPreIncrement() {
+        return true;
+    }
+    static constexpr auto allowStreamOutput() {
+        return true;
+    }
+};
+
+static_assert(CIntegerConfig<DefaultCIntegerConfig>);
+
+template <
+    CFreeInteger TIn,
+    typename TagIn,
+    CIntegerConfig Config = DefaultCIntegerConfig
+>
 class Integer {
 public:
     using T = TIn;
@@ -107,11 +150,20 @@ public:
     template <typename U>
     constexpr Integer(ForceConvert, U&& u)
         : value_(forceConvert, forward<U>(u)) { }
+    template <Undecay<Integer> U>
+    constexpr Integer(ForceConvert, U&& u)
+        : value_(forceConvert, forward<U>(u)) { }
 
     template <typename U>
-    static constexpr auto from(U&& u) {
+    static constexpr auto forceFrom(U&& u) {
         return Integer(forceConvert, forward<U>(u));
     }
+    template <Undecay<T> U>
+    static constexpr auto from(U&& u) {
+        return forceFrom(forward<U>(u));
+    }
+    template <typename U>
+    static constexpr auto from(U&&) = delete;
 
     constexpr auto get() const {
         return value_;
@@ -120,19 +172,23 @@ public:
         return get().get();
     }
 
-    constexpr auto operator<=>(const Integer&) const = default;
+    constexpr auto operator<=>(const Integer&) const
+        requires (Config::allowSelfCompare()) = default;
 
-    constexpr Integer& operator++() {
+    constexpr decltype(auto) operator++()
+        requires (Config::allowPostIncrement())
+    {
         ++value_;
         return *this;
     }
-    constexpr auto operator++(int) {
+    constexpr auto operator++(int) requires (Config::allowPreIncrement()) {
         auto r = *this;
         ++*this;
         return r;
     }
 
-    friend ostream& operator<<(ostream& out, const Integer& rhs) {
+    friend decltype(auto) operator<<(ostream& out, const Integer& rhs) {
+        static_assert(Config::allowStreamOutput());
         return out << rhs.get();
     }
 private:
@@ -148,16 +204,9 @@ namespace Detail {
 template <typename T>
 concept CInteger = Detail::CIntegerImpl<T>::value;
 
-#define SF_INT(Type, Underlying, Suffix) \
-    struct Type ## Tag { }; \
-    using Type = Integer<Underlying, Type ## Tag>; \
-    Type operator""_ ## Suffix(unsigned long long int x) { \
-        return Type::from(x); \
-    }
-
 template <typename... Ts>
 class Vector {
-    static_assert(DependentFalse<Ts...>);
+    static_assert(Dependentfalse<Ts...>);
 };
 template <typename T>
 class Vector<T> : public vector<T> {
@@ -207,6 +256,13 @@ public:
     }
 };
 
+#define SF_INT(Type, Underlying, Suffix) \
+    struct Type ## Tag { }; \
+    using Type = Integer<Underlying, Type ## Tag>; \
+    auto operator""_ ## Suffix(unsigned long long int x) { \
+        return Type::forceFrom(x); \
+    }
+
 SF_INT(ExitStatus, Int, es);
 SF_INT(Argc, Int, argc);
 
@@ -216,7 +272,7 @@ static SF::ExitStatus sfUserMain(SF::Argc, SF::Vector<SF::Argc, SF::String>&&);
 
 int main(int argcIn, char** argvIn) {
     using namespace SF;
-    auto argc = Argc::from(argcIn);
+    auto argc = Argc::from(makeFreeInteger(argcIn));
     Vector<Argc, String> argv;
     argv.reserve(argc);
     for (Argc i; i < argc; i++)
