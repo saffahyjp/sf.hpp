@@ -18,10 +18,10 @@ concept Undecay = is_same_v<decay_t<T>, U>;
 
 namespace Detail {
     template <typename... Ts>
-    struct DependentfalseImpl : false_type { };
+    struct DependentFalseImpl : false_type { };
 }
 template <typename... Ts>
-constexpr bool Dependentfalse = Detail::DependentfalseImpl<Ts...>::value;
+constexpr bool DependentFalse = Detail::DependentFalseImpl<Ts...>::value;
 
 static void assertImpl(bool x) {
     if (x)
@@ -43,7 +43,7 @@ static auto assertConvert(UIn&& u) {
         SF_ASSERT(cmp_equal(t, u));
         return t;
     } else {
-        static_assert(Dependentfalse<U>);
+        static_assert(DependentFalse<U>);
     }
 }
 
@@ -206,7 +206,7 @@ concept CInteger = Detail::CIntegerImpl<T>::value;
 
 template <typename... Ts>
 class Vector {
-    static_assert(Dependentfalse<Ts...>);
+    static_assert(DependentFalse<Ts...>);
 };
 template <typename T>
 class Vector<T> : public vector<T> {
