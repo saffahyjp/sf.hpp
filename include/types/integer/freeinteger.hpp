@@ -6,6 +6,9 @@
 
 namespace SF {
 
+template <integral T>
+static auto makeFreeInteger(T);
+
 template <integral TIn>
 class FreeInteger {
 public:
@@ -43,6 +46,11 @@ public:
         auto r = *this;
         ++*this;
         return r;
+    }
+
+    template <typename U>
+    constexpr auto operator+(const FreeInteger<U>& rhs) const {
+        return makeFreeInteger(get() + rhs.get());  // TODO: check for overflow
     }
 
     friend ostream& operator<<(ostream& out, const FreeInteger& rhs) {

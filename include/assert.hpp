@@ -83,6 +83,7 @@ static void assertImpl(
     SF::assertImpl<SF::PerformanceLevel::Benchmark>( \
         x, #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
     )
+#define SF_TEST SF_SLOW_ASSERT  // TODO
 
 template <typename T, typename UIn>
 static auto assertConvert(UIn&& u) {
