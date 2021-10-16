@@ -1,5 +1,4 @@
 #include "sf.hpp"
-
 using namespace SF;
 
 static ExitStatus sfUserMain(Argc argc, Vector<Argc, String>&& argv) {
