@@ -56,20 +56,33 @@ constexpr auto currentPerformanceLevel =
     PerformanceLevel::SF_CURRENT_PERFORMANCE_LEVEL;
 
 template <PerformanceLevel MaxPerformanceLevel>
-static void assertImpl(bool x) {
+static void assertImpl(
+    bool x, const char* name, const char* file, int line, const char* func
+) {
     if constexpr (currentPerformanceLevel > MaxPerformanceLevel) {
         if (!x)
             __builtin_unreachable();
     } else {
         if (x)
             return;
+        cerr << file << ":" << line << " " << func << ": assertion [" << name
+             << "] failed!" << endl;
         abort();
     }
 }
 
-#define SF_FAST_ASSERT(x...) SF::assertImpl<SF::PerformanceLevel::Debug>(x)
-#define SF_ASSERT(x...) SF::assertImpl<SF::PerformanceLevel::Release>(x)
-#define SF_SLOW_ASSERT(x...) SF::assertImpl<SF::PerformanceLevel::Benchmark>(x)
+#define SF_FAST_ASSERT(x...) \
+    SF::assertImpl<SF::PerformanceLevel::Debug>( \
+        x, #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
+    )
+#define SF_ASSERT(x...) \
+    SF::assertImpl<SF::PerformanceLevel::Release>( \
+        x, #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
+    )
+#define SF_SLOW_ASSERT(x...) \
+    SF::assertImpl<SF::PerformanceLevel::Benchmark>( \
+        x, #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
+    )
 
 template <typename T, typename UIn>
 static auto assertConvert(UIn&& u) {
