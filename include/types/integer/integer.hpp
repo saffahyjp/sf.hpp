@@ -40,15 +40,18 @@ public:
         return get().get();
     }
 
+    constexpr auto operator<=>(const Integer&) const = delete;
     constexpr auto operator<=>(const Integer&) const
         requires (Config::allowSelfCompare()) = default;
 
+    constexpr auto operator++() = delete;
     constexpr decltype(auto) operator++()
         requires (Config::allowPostIncrement())
     {
         ++value_;
         return *this;
     }
+    constexpr auto operator++(int) = delete;
     constexpr auto operator++(int) requires (Config::allowPreIncrement()) {
         auto r = *this;
         ++*this;
