@@ -9,6 +9,28 @@ namespace SF {
 template <integral T>
 static auto makeFreeInteger(T);
 
+template <integral T, integral U>
+static constexpr auto safePlus(T t, U u)
+    -> optional<decay_t<decltype(t + u)>>
+{
+    using R = decay_t<decltype(t + u)>;
+    using Return = optional<R>;
+    if constexpr (is_same_v<T, U>) {
+        if constexpr (is_signed_v<T>) {
+            if (t >= 0 && u >= 0 && t > numeric_limits<T>::max() - u)
+                return nullopt;
+            if (t < 0 && u < 0 && t < numeric_limits<T>::min() - u)
+                return nullopt;
+        } else {  // is_unsigned_v<T>
+            if (t > numeric_limits<T>::max() - u)
+                return nullopt;
+        }
+    } else {  // !is_same_v<T, U>
+        static_assert(DependentFalse<T, U>);
+    }
+    return t + u;
+}
+
 template <integral TIn>
 class FreeInteger {
 public:
@@ -48,9 +70,16 @@ public:
         return r;
     }
 
-    template <typename U>
-    constexpr auto operator+(const FreeInteger<U>& rhs) const {
-        return makeFreeInteger(get() + rhs.get());  // TODO: check for overflow
+    constexpr auto operator+(const FreeInteger& rhs) const {
+        auto l = get();
+        auto r = rhs.get();
+        auto ret = makeFreeInteger(l + r);
+        if constexpr (is_signed_v<T>) {
+            SF_FAST_ASSERT(ret.get() == safePlus(l, r));
+        } else {  // is_unsigned_v<T>
+            // do not check for overflow
+        }
+        return ret;  // TODO: check for overflow
     }
 
     friend ostream& operator<<(ostream& out, const FreeInteger& rhs) {

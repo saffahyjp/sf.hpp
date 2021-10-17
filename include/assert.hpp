@@ -55,16 +55,20 @@ enum class PerformanceLevel : int {
 constexpr auto currentPerformanceLevel =
     PerformanceLevel::SF_CURRENT_PERFORMANCE_LEVEL;
 
+static int failureToExpect = 0;
+
 template <PerformanceLevel MaxPerformanceLevel>
 static void assertImpl(
     bool x, const char* name, const char* file, int line, const char* func
 ) {
+    if (x)
+        return;
+    if (--failureToExpect >= 0)
+        return;
+
     if constexpr (currentPerformanceLevel > MaxPerformanceLevel) {
-        if (!x)
-            __builtin_unreachable();
+        __builtin_unreachable();
     } else {
-        if (x)
-            return;
         cerr << file << ":" << line << " " << func << ": assertion [" << name
              << "] failed!" << endl;
         abort();
@@ -83,7 +87,19 @@ static void assertImpl(
     SF::assertImpl<SF::PerformanceLevel::Benchmark>( \
         x, #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
     )
-#define SF_TEST SF_SLOW_ASSERT  // TODO
+#define SF_TEST(x...) \
+    [&] { \
+        auto sfExpectFailureSave = exchange(SF::failureToExpect, 0); \
+        SF_SLOW_ASSERT(x); \
+        SF::failureToExpect = sfExpectFailureSave; \
+    }();
+
+#define SF_EXPECT_FAILURE(x...) \
+    [&] { \
+        auto sfExpectFailureSave = SF::failureToExpect++; \
+        x; \
+        SF_TEST(SF::failureToExpect == sfExpectFailureSave); \
+    }();
 
 template <typename T, typename UIn>
 static auto assertConvert(UIn&& u) {
