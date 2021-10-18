@@ -18,7 +18,7 @@ static constexpr auto safePlus(T t, U u)
     using Return = optional<R>;
     if constexpr (is_same_v<T, U>) {
         if constexpr (is_signed_v<T>) {
-            if (t >= 0 && u >= 0 && t > numeric_limits<T>::max() - u)
+            if (t > 0 && u > 0 && t > numeric_limits<T>::max() - u)
                 return nullopt;
             if (t < 0 && u < 0 && t < numeric_limits<T>::min() - u)
                 return nullopt;
@@ -36,6 +36,8 @@ template <integral TIn, CFreeIntegerConfig Config = DefaultFreeIntegerConfig>
 class FreeInteger {
 public:
     using T = TIn;
+    static constexpr bool checkOverflow
+        = is_signed_v<TIn> || Config::checkUnsignedOverflow();
     constexpr FreeInteger() : value_(0) { }
     template <typename U>
     constexpr FreeInteger(ForceConvert, U&& u)
@@ -71,13 +73,52 @@ public:
         return r;
     }
 
+    // TODO: support operator+(const FreeInteger<U>&) const
+
     constexpr auto operator+(const FreeInteger& rhs) const {
-        auto l = get();
-        auto r = rhs.get();
+        auto l = get(), r = rhs.get();
         auto ret = makeFreeInteger(l + r);
-        if constexpr (is_signed_v<T> || Config::checkUnsignedOverflow())
+        if constexpr (checkOverflow)
             SF_FAST_ASSERT(ret.get() == safePlus(l, r));
         return ret;
+    }
+    constexpr auto operator-(const FreeInteger& rhs) const {
+        auto l = get(), r = rhs.get();
+        auto ret = makeFreeInteger(l - r);
+        if constexpr (checkOverflow)
+            SF_FAST_ASSERT(ret.get() == safeMinus(l, r));
+        return ret;
+    }
+    constexpr auto operator*(const FreeInteger& rhs) const {
+        auto l = get(), r = rhs.get();
+        auto ret = makeFreeInteger(l * r);
+        if constexpr (checkOverflow)
+            SF_FAST_ASSERT(ret.get() == safeMultiplies(l, r));
+        return ret;
+    }
+    constexpr auto operator/(const FreeInteger& rhs) const {
+        auto l = get(), r = rhs.get();
+        auto ret = makeFreeInteger(l / r);
+        if constexpr (checkOverflow)
+            SF_FAST_ASSERT(ret.get() == safeDivides(l, r));
+        return ret;
+    }
+
+    template <typename U>
+    constexpr decltype(auto) operator+=(U&& u) {
+        return *this = *this + forward<U>(u);
+    }
+    template <typename U>
+    constexpr decltype(auto) operator-=(U&& u) {
+        return *this = *this - forward<U>(u);
+    }
+    template <typename U>
+    constexpr decltype(auto) operator*=(U&& u) {
+        return *this = *this * forward<U>(u);
+    }
+    template <typename U>
+    constexpr decltype(auto) operator/=(U&& u) {
+        return *this = *this / forward<U>(u);
     }
 
     friend ostream& operator<<(ostream& out, const FreeInteger& rhs) {
