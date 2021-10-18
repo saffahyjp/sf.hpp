@@ -9,14 +9,12 @@ static ExitStatus sfUserMain(Argc argc, Vector<Argc, String>&& argv) {
     SF_TEST(one + one == two);
 
     const auto min = makeFreeInteger(INT_MIN), max = makeFreeInteger(INT_MAX);
-    SF_EXPECT_FAILURE(one + max);
     SF_TEST(min + max + one == zero);
 
     Int a;
     SF_TEST(a == zero);
     SF_TEST((a += one) == one);
     SF_TEST((a += one) == two);
-    SF_EXPECT_FAILURE(a += max);
 
     SF_TEST(one - one == zero);
     SF_TEST(two - one == one);
@@ -27,6 +25,12 @@ static ExitStatus sfUserMain(Argc argc, Vector<Argc, String>&& argv) {
     SF_TEST(zero * one == zero);
     SF_TEST(one * two == two);
     SF_TEST(zero - max * one == min + one);
+
+    SF_TEST(one / one == one);
+    SF_TEST(one / two == zero);
+    SF_TEST(two / one == two);
+    SF_TEST(min / one == min);
+    SF_TEST(max / one == max);
 
     cerr << "All tests passed" << endl;
     return 0_es;

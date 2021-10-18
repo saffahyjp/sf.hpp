@@ -76,7 +76,7 @@ static constexpr auto safeMultiplies(T t, U u)
                 return safeMultiplies(u, t);
             SF_FAST_ASSERT(t <= u);
             if (t == min) {
-                if (u == 0 || u == 1)
+                if (!u || cmp_equal(u, 1))
                     return t * u;
                 return nullopt;
             }
@@ -92,7 +92,42 @@ static constexpr auto safeMultiplies(T t, U u)
     } else {  // !is_same_v<T, U>
         static_assert(CUnimplemented<T, U>);
     }
-    return t - u;
+    return t * u;
+}
+
+template <integral T, integral U>
+static constexpr auto safeDivides(T t, U u)
+    -> optional<decay_t<decltype(t / u)>>
+{
+    using R = decay_t<decltype(t / u)>;
+    using Return = optional<R>;
+    if constexpr (is_same_v<T, U>) {
+        static_assert(is_same_v<T, R>);
+        if constexpr (is_signed_v<T>) {
+            if (!u)
+                return nullopt;
+            if (t == numeric_limits<T>::min() && cmp_equal(u, -1))
+                return nullopt;
+        } else {  // is_unsigned_v<T>
+            if (!u)
+                return nullopt;
+        }
+    } else {  // !is_same_v<T, U>
+        static_assert(CUnimplemented<T, U>);
+    }
+    return t / u;
+}
+
+template <integral T>
+static constexpr auto safeNegate(T t) -> optional<decay_t<decltype(-t)>> {
+    if constexpr (is_signed_v<T>) {
+        if (t == numeric_limits<T>::min())
+            return nullopt;
+    } else {  // is_unsigned_v<T>
+        if (t)
+            return nullopt;
+    }
+    return -t;
 }
 
 template <integral TIn, CFreeIntegerConfig Config = DefaultFreeIntegerConfig>
@@ -140,30 +175,52 @@ public:
 
     constexpr auto operator+(const FreeInteger& rhs) const {
         auto l = get(), r = rhs.get();
+        auto safe = safePlus(l, r);
+        if constexpr (checkOverflow)
+            SF_FAST_ASSERT(safe);
         auto ret = makeFreeInteger(l + r);
         if constexpr (checkOverflow)
-            SF_FAST_ASSERT(ret.get() == safePlus(l, r));
+            SF_FAST_ASSERT(ret.get() == safe);
         return ret;
     }
     constexpr auto operator-(const FreeInteger& rhs) const {
         auto l = get(), r = rhs.get();
+        auto safe = safeMinus(l, r);
+        if constexpr (checkOverflow)
+            SF_FAST_ASSERT(safe);
         auto ret = makeFreeInteger(l - r);
         if constexpr (checkOverflow)
-            SF_FAST_ASSERT(ret.get() == safeMinus(l, r));
+            SF_FAST_ASSERT(ret.get() == safe);
         return ret;
     }
     constexpr auto operator*(const FreeInteger& rhs) const {
         auto l = get(), r = rhs.get();
+        auto safe = safeMultiplies(l, r);
+        if constexpr (checkOverflow)
+            SF_FAST_ASSERT(safe);
         auto ret = makeFreeInteger(l * r);
         if constexpr (checkOverflow)
-            SF_FAST_ASSERT(ret.get() == safeMultiplies(l, r));
+            SF_FAST_ASSERT(ret.get() == safe);
         return ret;
     }
     constexpr auto operator/(const FreeInteger& rhs) const {
         auto l = get(), r = rhs.get();
+        auto safe = safeDivides(l, r);
+        if constexpr (checkOverflow)
+            SF_FAST_ASSERT(safe);
         auto ret = makeFreeInteger(l / r);
         if constexpr (checkOverflow)
-            SF_FAST_ASSERT(ret.get() == safeDivides(l, r));
+            SF_FAST_ASSERT(ret.get() == safe);
+        return ret;
+    }
+    constexpr auto operator-() const {
+        auto l = get();
+        auto safe = safeNegate(l);
+        if constexpr (checkOverflow)
+            SF_FAST_ASSERT(safe);
+        auto ret = makeFreeInteger(-l);
+        if constexpr (checkOverflow)
+            SF_FAST_ASSERT(ret.get() == safe);
         return ret;
     }
 

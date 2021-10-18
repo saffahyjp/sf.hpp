@@ -77,28 +77,21 @@ static void assertImpl(
 
 #define SF_FAST_ASSERT(x...) \
     SF::assertImpl<SF::PerformanceLevel::Debug>( \
-        x, #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
+        (bool) (x), #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
     )
 #define SF_ASSERT(x...) \
     SF::assertImpl<SF::PerformanceLevel::Release>( \
-        x, #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
+        (bool) (x), #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
     )
 #define SF_SLOW_ASSERT(x...) \
     SF::assertImpl<SF::PerformanceLevel::Benchmark>( \
-        x, #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
+        (bool) (x), #x, __FILE__, __LINE__, __PRETTY_FUNCTION__ \
     )
 #define SF_TEST(x...) \
     [&] { \
         auto sfExpectFailureSave = exchange(SF::failureToExpect, 0); \
         SF_SLOW_ASSERT(x); \
         SF::failureToExpect = sfExpectFailureSave; \
-    }();
-
-#define SF_EXPECT_FAILURE(x...) \
-    [&] { \
-        auto sfExpectFailureSave = SF::failureToExpect++; \
-        x; \
-        SF_TEST(SF::failureToExpect == sfExpectFailureSave); \
     }();
 
 template <typename T, typename UIn>
