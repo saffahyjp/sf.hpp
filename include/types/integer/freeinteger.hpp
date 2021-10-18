@@ -3,6 +3,7 @@
 #include "../../traits.hpp"
 #include "../../assert.hpp"
 #include "../tags.hpp"
+#include "freeintegerconfig.hpp"
 
 namespace SF {
 
@@ -31,7 +32,7 @@ static constexpr auto safePlus(T t, U u)
     return t + u;
 }
 
-template <integral TIn>
+template <integral TIn, CFreeIntegerConfig Config = DefaultFreeIntegerConfig>
 class FreeInteger {
 public:
     using T = TIn;
@@ -74,12 +75,9 @@ public:
         auto l = get();
         auto r = rhs.get();
         auto ret = makeFreeInteger(l + r);
-        if constexpr (is_signed_v<T>) {
+        if constexpr (is_signed_v<T> || Config::checkUnsignedOverflow())
             SF_FAST_ASSERT(ret.get() == safePlus(l, r));
-        } else {  // is_unsigned_v<T>
-            // do not check for overflow
-        }
-        return ret;  // TODO: check for overflow
+        return ret;
     }
 
     friend ostream& operator<<(ostream& out, const FreeInteger& rhs) {
