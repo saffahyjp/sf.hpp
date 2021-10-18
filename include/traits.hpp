@@ -13,4 +13,7 @@ namespace Detail {
 template <typename... Ts>
 constexpr bool DependentFalse = Detail::DependentFalseImpl<Ts...>::value;
 
+template <typename... Ts>
+concept CUnimplemented = DependentFalse<Ts...>;
+
 }  // namespace SF

@@ -17,6 +17,7 @@ static constexpr auto safePlus(T t, U u)
     using R = decay_t<decltype(t + u)>;
     using Return = optional<R>;
     if constexpr (is_same_v<T, U>) {
+        static_assert(is_same_v<T, R>);
         if constexpr (is_signed_v<T>) {
             if (t > 0 && u > 0 && t > numeric_limits<T>::max() - u)
                 return nullopt;
@@ -27,9 +28,71 @@ static constexpr auto safePlus(T t, U u)
                 return nullopt;
         }
     } else {  // !is_same_v<T, U>
-        static_assert(DependentFalse<T, U>);
+        static_assert(CUnimplemented<T, U>);
     }
     return t + u;
+}
+
+template <integral T, integral U>
+static constexpr auto safeMinus(T t, U u)
+    -> optional<decay_t<decltype(t - u)>>
+{
+    using R = decay_t<decltype(t - u)>;
+    using Return = optional<R>;
+    if constexpr (is_same_v<T, U>) {
+        static_assert(is_same_v<T, R>);
+        if constexpr (is_signed_v<T>) {
+            if (t > 0 && u < 0 && t > numeric_limits<T>::max() + u)
+                return nullopt;
+            if (t < 0 && u > 0 && t < numeric_limits<T>::min() + u)
+                return nullopt;
+        } else {  // is_unsigned_v<T>
+            if (t < u)
+                return nullopt;
+        }
+    } else {  // !is_same_v<T, U>
+        static_assert(CUnimplemented<T, U>);
+    }
+    return t - u;
+}
+
+template <integral T, integral U>
+static constexpr auto safeMultiplies(T t, U u)
+    -> optional<decay_t<decltype(t * u)>>
+{
+    using R = decay_t<decltype(t * u)>;
+    using Return = optional<R>;
+    auto negated = [](Return r) -> Return {
+        if (r)
+            return -*r;
+        return nullopt;
+    };
+    if constexpr (is_same_v<T, U>) {
+        static_assert(is_same_v<T, R>);
+        if constexpr (is_signed_v<T>) {
+            using Limits = numeric_limits<T>;
+            constexpr auto min = Limits::min(), max = Limits::max();
+            if (t > u)
+                return safeMultiplies(u, t);
+            SF_FAST_ASSERT(t <= u);
+            if (t == min) {
+                if (u == 0 || u == 1)
+                    return t * u;
+                return nullopt;
+            }
+            if (t < 0)
+                return negated(safeMultiplies(-t, u));
+            SF_FAST_ASSERT(t >= 0 && u >= 0);
+            if (t > max / u)
+                return nullopt;
+        } else {  // is_unsigned_v<T>
+            if (t > numeric_limits<T>::max() / u)
+                return nullopt;
+        }
+    } else {  // !is_same_v<T, U>
+        static_assert(CUnimplemented<T, U>);
+    }
+    return t - u;
 }
 
 template <integral TIn, CFreeIntegerConfig Config = DefaultFreeIntegerConfig>

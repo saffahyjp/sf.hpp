@@ -18,6 +18,16 @@ static ExitStatus sfUserMain(Argc argc, Vector<Argc, String>&& argv) {
     SF_TEST((a += one) == two);
     SF_EXPECT_FAILURE(a += max);
 
+    SF_TEST(one - one == zero);
+    SF_TEST(two - one == one);
+    SF_TEST(max - max == zero);
+    SF_TEST(min - min == zero);
+    SF_TEST(zero - zero == zero);
+
+    SF_TEST(zero * one == zero);
+    SF_TEST(one * two == two);
+    SF_TEST(zero - max * one == min + one);
+
     cerr << "All tests passed" << endl;
     return 0_es;
 }
