@@ -18,9 +18,6 @@ public:
     template <typename U>
     constexpr Integer(ForceConvert, U&& u)
         : value_(forceConvert, forward<U>(u)) { }
-    template <CUndecay<Integer> U>
-    constexpr Integer(ForceConvert, U&& u)
-        : value_(forceConvert, forward<U>(u)) { }
 
     template <typename U>
     static constexpr auto forceFrom(U&& u) {

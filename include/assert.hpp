@@ -55,15 +55,11 @@ enum class PerformanceLevel : int {
 constexpr auto currentPerformanceLevel =
     PerformanceLevel::SF_CURRENT_PERFORMANCE_LEVEL;
 
-static int failureToExpect = 0;
-
 template <PerformanceLevel MaxPerformanceLevel>
 static void assertImpl(
     bool x, const char* name, const char* file, int line, const char* func
 ) {
     if (x)
-        return;
-    if (--failureToExpect >= 0)
         return;
 
     if constexpr (currentPerformanceLevel > MaxPerformanceLevel) {
@@ -89,9 +85,7 @@ static void assertImpl(
     )
 #define SF_TEST(x...) \
     [&] { \
-        auto sfExpectFailureSave = exchange(SF::failureToExpect, 0); \
         SF_SLOW_ASSERT(x); \
-        SF::failureToExpect = sfExpectFailureSave; \
     }();
 
 template <typename T, typename UIn>
@@ -102,7 +96,7 @@ static auto assertConvert(UIn&& u) {
         SF_FAST_ASSERT(cmp_equal(t, u));
         return t;
     } else {
-        static_assert(DependentFalse<U>);
+        static_assert(CUnimplemented<T, U>);
     }
 }
 
